@@ -1,5 +1,5 @@
 use std::env;
-
+use std::collections::HashSet;
 
 #[derive(Debug)]
 enum Direction {
@@ -14,11 +14,12 @@ enum Rotation{
     LEFT
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 struct Point {
     x: i32,
     y: i32,
 }
+
 
 impl Direction{
     fn value(&self) -> Point{
@@ -68,11 +69,13 @@ impl Direction{
     }
 }
 
-fn get_distance_to_easter_bunny_hq(puzzle_input: &String) -> i32 {
+fn get_distance_to_easter_bunny_hq(puzzle_input: &String) -> (i32, i32) {
     let mut direction = Direction::NORTH;
     //Since we assume that we start at 0,0 we can easily count the distance later.
     let mut position = Point{x: 0, y: 0};
-
+    let mut visited_positions = HashSet::new();
+    let mut first_visited_node_distance = -9999;
+    visited_positions.insert(position);
     for command in puzzle_input.split(", ") {
         let rotation_direction = command.chars().next().unwrap();
         if rotation_direction == 'R'{
@@ -85,18 +88,31 @@ fn get_distance_to_easter_bunny_hq(puzzle_input: &String) -> i32 {
 
     match command[1..command.len()].parse::<i32>(){
         Ok(number_of_steps) => {
-            //This will return the direction vector
-            position.x += direction.value().x * number_of_steps;
-            position.y += direction.value().y * number_of_steps;
+            let initialPosition = position;
+            for x in 1..number_of_steps+1{
+                //This will return the direction vector
+                position.x = initialPosition.x + direction.value().x * x;
+                position.y = initialPosition.y + direction.value().y * x;
+                if visited_positions.contains(&position) && first_visited_node_distance == -9999{
+                    first_visited_node_distance = position.x.abs() + position.y.abs();
+                }
+                visited_positions.insert(position);
+            }
         },
         Err(e) => panic!("Unable to get number of moves. Abort! Kill it with fire!"),
     }
 };
 
+if first_visited_node_distance == -9999{
+    println!("Warning! No node visited twice. Double check puzzle input. Visited positions: {:?}", visited_positions);
+}
+
 println!("Final destination: {:?}", position);
-let distance = position.x.abs() + position.y.abs();
-println!("Distance: {:?}", distance);
-distance
+let distance_to_hQ = position.x.abs() + position.y.abs();
+println!("Distance: {:?}", distance_to_hQ);
+println!("Distance to first already visited node: {:?}", first_visited_node_distance);
+
+(distance_to_hQ, first_visited_node_distance)
 }
 
 fn main() {
@@ -107,15 +123,18 @@ fn main() {
     }
     get_distance_to_easter_bunny_hq(&args[1]);
 }
-
 #[test]
 fn example1() {
-    assert_eq!(5, get_distance_to_easter_bunny_hq(&String::from("R2, L3")));
+    assert_eq!(5, get_distance_to_easter_bunny_hq(&String::from("R2, L3")).0);
 }
 #[test]
 fn example2() {
-    assert_eq!(2, get_distance_to_easter_bunny_hq(&String::from("R2, R2, R2")));
+    assert_eq!(2, get_distance_to_easter_bunny_hq(&String::from("R2, R2, R2")).0);
 }#[test]
 fn example3() {
-    assert_eq!(12, get_distance_to_easter_bunny_hq(&String::from("R5, L5, R5, R3")));
+    assert_eq!(12, get_distance_to_easter_bunny_hq(&String::from("R5, L5, R5, R3")).0);
+}
+#[test]
+fn example4() {
+    assert_eq!(4, get_distance_to_easter_bunny_hq(&String::from("R8, R4, R4, R8")).1);
 }
